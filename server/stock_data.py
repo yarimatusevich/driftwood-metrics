@@ -1,5 +1,4 @@
 import yfinance
-import json
 
 class Article():
     def __init__(self, title: str, publishing_date: str, thumbnail: str, summary: str, url: str):
@@ -42,4 +41,3 @@ def parse_data(data: dict):
 
 data = get_data_from_ticker("AMZN")
 articles = parse_data(data)
-print(articles[0])
