@@ -17,27 +17,40 @@ class Article():
     url: str
 
 def get_data_from_ticker(ticker: str):
-    return yfinance.Ticker(ticker)
+    try:
+        return yfinance.Ticker(ticker)
+    
+    except Exception as e :
+        print(f"Error retrieving ticker: {e}")
+        return None
 
 def parse_data(data: dict):
+    # Checking if data is not null
+    if not isinstance(data, dict):
+        return
+
     data = data.news
-    
     parsed_data = []
-    # print(data[0])
 
-    for article in data:
-        article_content = article.get("content")
+    for i, article in enumerate(data):
+        try:
+            article_content = article.get("content")
+            title = article_content.get("title")
+            publishing_date = article_content.get("pubDate")
 
-        title = article_content.get("title")
-        publishing_date = article_content.get("pubDate")
-        thumbnail = article_content.get("thumbnail")
-        summary = article_content.get("summary")
-        url = article_content.get("clickThroughUrl").get("url")
+            thumbnail_data = article_content.get("thumbnail")
+            thumbnail = thumbnail_data.get("originalUrl") if isinstance(thumbnail_data, dict) else None
 
-        new_article = Article(title, publishing_date, thumbnail, summary, url)
-        parsed_data.append(new_article)
+            summary = article_content.get("summary")
+
+            clickthrough = article_content.get("clickThroughUrl")
+            url = clickthrough.get("url") if isinstance(clickthrough, dict) else None
+
+            new_article = Article(title, publishing_date, thumbnail, summary, url)
+            parsed_data.append(new_article)
+
+        except Exception as e:
+            print(f"Error parsing article at index {i}: {e}")
+
     
     return parsed_data
-
-data = get_data_from_ticker("AMZN")
-articles = parse_data(data)
