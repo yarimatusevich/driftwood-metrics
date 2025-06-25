@@ -1,58 +1,8 @@
 import yfinance
 from yfinance import Ticker
+from data_models import StockData, Article
+from sentiment_model import get_sentiment_model, get_article_list_sentiments
 
-class Article():
-    def __init__(self, title: str, publishing_date: str, thumbnail: str, summary: str, url: str):
-        self.title = title
-        self.publishing_date = publishing_date
-        self.thumbnail = thumbnail
-        self.summary = summary
-        self.url = url
-    
-    def __str__(self):
-        return f"Title: {self.title}, Publishing Date: {self.publishing_date}, thumbnail: {self.thumbnail}, summary: {self.summary}, url: {self.url} "
-
-    title: str
-    publishing_date: str
-    summary: str
-    url: str
-
-"""
-todo: include historical price trends
-"""
-class StockData():
-    def __init__(
-        self,
-        valuation_metrics: dict,
-        profitability_metrics: dict,
-        balance_sheet_data: dict,
-        growth_metrics: dict,
-        stock_performance_metrics: dict,
-        income_metrics: dict,
-        analyst_sentiment: dict,
-        # news_articles: list[Article]
-    ):
-        self.valuation_metrics = valuation_metrics
-        self.profitability_metrics = profitability_metrics
-        self.balance_sheet_data = balance_sheet_data
-        self.growth_metrics = growth_metrics
-        self.stock_performance_metrics = stock_performance_metrics
-        self.income_metrics = income_metrics
-        self.analyst_sentiment = analyst_sentiment
-        # self.news_articles = news_articles
-
-    valuation_metrics: dict
-    profitability_metrics: dict
-    balance_sheet_data: dict
-    growth_metrics: dict
-    stock_performance_metrics: dict
-    income_metrics: dict
-    analyst_sentiment: dict
-    # news_articles: list[Article]
-
-"""
-Retrieves ticker data from Yahoo Finance and creates a ticker object
-"""
 def create_ticker_object(ticker: str) -> Ticker:
     try:
         return yfinance.Ticker(ticker)
@@ -62,6 +12,9 @@ def create_ticker_object(ticker: str) -> Ticker:
         return None
 
 def parse_ticker_data(ticker: Ticker) -> StockData:
+    model = get_sentiment_model()
+    articles = get_news_articles(ticker)
+    
     return StockData(
         valuation_metrics = get_valuation_metrics(ticker),
         profitability_metrics = get_profitability_metrics(ticker),
@@ -70,7 +23,7 @@ def parse_ticker_data(ticker: Ticker) -> StockData:
         stock_performance_metrics = get_stock_performance_metrics(ticker),
         income_metrics = get_income_metrics(ticker),
         analyst_sentiment = get_analyst_sentiment(ticker),
-        # news_articles = get_news_articles(ticker)
+        article_sentiments = get_article_list_sentiments(articles, model)
     )
 
 def get_valuation_metrics(ticker: Ticker) -> dict:
@@ -117,12 +70,9 @@ def get_income_metrics(ticker: Ticker) -> dict:
 def get_analyst_sentiment(ticker: Ticker) -> dict:
     return {
         "targetMeanPrice": ticker.info.get("targetMeanPrice"),
-        "recommendations": ticker.recommendations,
+        "recommendations": ticker.recommendations.to_dict(orient = "records"),
     }
 
-"""
-Parses ten most recent articles from ticker object and returns list of article objects
-""" 
 def get_news_articles(ticker: Ticker) -> list[Article]:
     data = ticker.news
     parsed_data = []
@@ -133,15 +83,15 @@ def get_news_articles(ticker: Ticker) -> list[Article]:
             title = article_content.get("title")
             publishing_date = article_content.get("pubDate")
 
-            thumbnail_data = article_content.get("thumbnail")
-            thumbnail = thumbnail_data.get("originalUrl") if isinstance(thumbnail_data, dict) else None
+            # thumbnail_data = article_content.get("thumbnail")
+            # thumbnail = thumbnail_data.get("originalUrl") if isinstance(thumbnail_data, dict) else None
 
             summary = article_content.get("summary")
 
             clickthrough = article_content.get("clickThroughUrl")
             url = clickthrough.get("url") if isinstance(clickthrough, dict) else None
 
-            new_article = Article(title, publishing_date, thumbnail, summary, url)
+            new_article = Article(title, publishing_date, summary, url)
             parsed_data.append(new_article)
         except Exception as e:
             print(f"Error parsing article at index {i}: {e}")
