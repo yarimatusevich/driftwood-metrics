@@ -19,21 +19,14 @@ Using the instruct version as this model is tailored towards creating structured
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedTokenizerBase, PreTrainedModel
 from data_models import StockData
-import torch
+# import torch
 
 def get_generative_ai_model() -> tuple[PreTrainedTokenizerBase, PreTrainedModel]:
     model_name = "deepseek-ai/deepseek-coder-1.3b-instruct"
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True).to("mps")
+    model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True).to("cuda")
 
     return tokenizer, model 
-
-# def get_generative_ai_model() -> tuple[PreTrainedTokenizerBase, PreTrainedModel]:
-#     model_name = "microsoft/phi-2"
-#     tokenizer = AutoTokenizer.from_pretrained(model_name)
-#     model = AutoModelForCausalLM.from_pretrained(model_name,  torch_dtype= torch.float16).to("mps")
-
-#     return tokenizer, model 
 
 def prompt_generative_ai_model(messages: list[dict], model_bundle: tuple[AutoModelForCausalLM, PreTrainedTokenizerBase]) -> dict:
     tokenizer, model = model_bundle
@@ -44,14 +37,14 @@ def prompt_generative_ai_model(messages: list[dict], model_bundle: tuple[AutoMod
         add_generation_prompt=True
     ).to(model.device)
 
-    output = model.generate(input_ids, max_new_tokens=100)
+    output = model.generate(input_ids, max_new_tokens=1000)
 
     return tokenizer.decode(output[0][input_ids.shape[-1]:], skip_special_tokens=True)
 
 def get_prompt(stock_data: StockData) -> str:
     return f"""
-    You are a financial analyst. Based on the following data, return a JSON object in this format:
-
+    Using this data: {stock_data.jsonify()}, summarize it and,
+    return a structured json with the following fields:
     {{
     "valuation_summary": "...",
     "profitability_summary": "...",
@@ -62,25 +55,29 @@ def get_prompt(stock_data: StockData) -> str:
     "article_sentiment_summary": "...",
     "overall_assessment": "..."
     }}
-
-    DATA:
-    {stock_data.jsonify()}
-
-    Only return the JSON object.
     """
 
 def get_recommendation(stock_data: StockData, model_bundle: tuple[AutoModelForCausalLM, PreTrainedTokenizerBase]):
     prompt = get_prompt(stock_data)
 
-    messages=[
+    messages = [
         {
-            'role': 'system',
-            'content': "You are a financial analyst."
+            "role": "system",
+            "content": (
+                "You are a financial analyst. "
+                "Respond only with a valid JSON object. "
+                "Do not include any explanations, headings, or extra text."
+            )
         },
         {
-            'role': 'user',
-            'content': f"{prompt}."
+            "role": "user",
+            "content": f"{prompt.strip()}."
         }
     ]
 
     return prompt_generative_ai_model(messages, model_bundle)
+
+def write_llm_response_to_file(response: str):
+    print(f"*****************************{response}")
+    with open("response.json", "w") as f:
+        f.write(response)

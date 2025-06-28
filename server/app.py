@@ -3,7 +3,7 @@ from dataclasses import asdict
 
 from finance_data import create_ticker_object, parse_ticker_data
 from sentiment_model import get_sentiment_model
-from llm import get_generative_ai_model, get_recommendation
+from llm import get_generative_ai_model, get_recommendation, write_llm_response_to_file
 
 def main():
     repl()
@@ -32,7 +32,9 @@ def repl():
         
         # Gets report from deepseek
         response = get_recommendation(stock_data, llm_model)
-        print(response)
+        write_llm_response_to_file(response)
+
+        print("Response file updated")
 
 if __name__ == "__main__":
     main()
