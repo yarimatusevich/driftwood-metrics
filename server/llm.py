@@ -18,13 +18,41 @@ Using the instruct version as this model is tailored towards creating structured
 """
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedTokenizerBase, PreTrainedModel
+from data_models import StockData
+import torch
 
-TEMPLATE_REPORT_JSON = """
-    You are a financial analyst. Based on the following stock data, return a JSON object that includes a summary of each key area and an overall investment recommendation.
+def get_generative_ai_model() -> tuple[PreTrainedTokenizerBase, PreTrainedModel]:
+    model_name = "deepseek-ai/deepseek-coder-1.3b-instruct"
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True).to("mps")
 
-    Return the result in exactly this format:
+    return tokenizer, model 
 
-    {
+# def get_generative_ai_model() -> tuple[PreTrainedTokenizerBase, PreTrainedModel]:
+#     model_name = "microsoft/phi-2"
+#     tokenizer = AutoTokenizer.from_pretrained(model_name)
+#     model = AutoModelForCausalLM.from_pretrained(model_name,  torch_dtype= torch.float16).to("mps")
+
+#     return tokenizer, model 
+
+def prompt_generative_ai_model(messages: list[dict], model_bundle: tuple[AutoModelForCausalLM, PreTrainedTokenizerBase]) -> dict:
+    tokenizer, model = model_bundle
+
+    input_ids = tokenizer.apply_chat_template(
+        messages,
+        return_tensors="pt",
+        add_generation_prompt=True
+    ).to(model.device)
+
+    output = model.generate(input_ids, max_new_tokens=100)
+
+    return tokenizer.decode(output[0][input_ids.shape[-1]:], skip_special_tokens=True)
+
+def get_prompt(stock_data: StockData) -> str:
+    return f"""
+    You are a financial analyst. Based on the following data, return a JSON object in this format:
+
+    {{
     "valuation_summary": "...",
     "profitability_summary": "...",
     "balance_sheet_summary": "...",
@@ -33,71 +61,26 @@ TEMPLATE_REPORT_JSON = """
     "analyst_sentiment_summary": "...",
     "article_sentiment_summary": "...",
     "overall_assessment": "..."
-    }
+    }}
 
     DATA:
-    {data}
+    {stock_data.jsonify()}
 
-    Only return the JSON object. Do not include any explanations, markdown, or extra text.
-"""
+    Only return the JSON object.
+    """
 
-def get_recommendation(stock_data: StockData):
-    prompt = TEMPLATE_REPORT_JSON.format(data = stock_data.jsonify())
-    model_bundle = get_generative_ai_model()
+def get_recommendation(stock_data: StockData, model_bundle: tuple[AutoModelForCausalLM, PreTrainedTokenizerBase]):
+    prompt = get_prompt(stock_data)
 
     messages=[
         {
             'role': 'system',
-            'content': "You are a financial analyst, using provided data create a structured JSON report either encouraging or discouraging clients from purchasing a stock depending on the data."
+            'content': "You are a financial analyst."
         },
         {
             'role': 'user',
-            'content': f"Here is some stock data in the form of a JSON: {prompt}. Please analyze it and return a structured JSON recommendation."
+            'content': f"{prompt}."
         }
     ]
 
-    return prompt_generative_ai_model(prompt, model_bundle, messages)
-
-def get_generative_ai_model() -> tuple[PreTrainedTokenizerBase, PreTrainedModel]:
-    model_name = "deepseek-ai/deepseek-coder-1.3b-instruct"
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True).to("cpu")
-
-    return tokenizer, model 
-
-# def prompt_generative_ai_model(
-#         input: str,
-#         model_bundle: tuple[AutoModelForCausalLM, PreTrainedTokenizerBase],
-#         messages: list[dict]
-#         ) -> dict:
-        
-#     model, tokenizer = model_bundle
-
-    # messages=[
-    #     {
-    #         'role': 'system',
-    #         'content': "You are a financial analyst, using provided data create a structured JSON report either encouraging or discouraging clients from purchasing a stock depending on the data."
-    #     },
-    #     {
-    #         'role': 'user',
-    #         'content': f"Here is some stock data: { ... }. Please analyze it and return a structured JSON recommendation."
-    #     }
-    # ]
-
-
-def prompt_generative_ai_model(
-        prompt: str,
-        model_bundle: tuple[AutoModelForCausalLM, PreTrainedTokenizerBase],
-        messages: list[dict]
-        ) -> dict:
-    tokenizer, model = model_bundle
-
-    input_ids = tokenizer.apply_chat_template(
-        [{"role": "user", "content": prompt}],
-        return_tensors="pt",
-        add_generation_prompt=True
-    ).to(model.device)
-
-    output = model.generate(input_ids, max_new_tokens=100)
-
-    return tokenizer.decode(output[0][input_ids.shape[-1]:], skip_special_tokens=True)
+    return prompt_generative_ai_model(messages, model_bundle)

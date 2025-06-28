@@ -1,13 +1,18 @@
 import json
 from dataclasses import asdict
-from sentiment_model import get_sentiment_model
+
 from finance_data import create_ticker_object, parse_ticker_data
+from sentiment_model import get_sentiment_model
+from llm import get_generative_ai_model, get_recommendation
 
 def main():
     repl()
 
 def repl():
     sentiment_model = get_sentiment_model()
+    llm_model = get_generative_ai_model()
+
+    print("Models loaded")
 
     while True:
         ticker = input("Write a ticker: ")
@@ -17,10 +22,17 @@ def repl():
         ticker = create_ticker_object(ticker)
         stock_data = parse_ticker_data(ticker)
 
+        print("Ticker data parsed")
+
         # Writes to file
         with open("output.json", "w") as f:
             json.dump(asdict(stock_data), f, indent=2)
 
+        print("Output file updated")
+        
+        # Gets report from deepseek
+        response = get_recommendation(stock_data, llm_model)
+        print(response)
 
 if __name__ == "__main__":
     main()
