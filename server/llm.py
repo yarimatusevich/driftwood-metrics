@@ -69,6 +69,7 @@ def get_recommendation(stock_data: StockData, model_bundle: tuple[AutoModelForCa
                 "You are a financial analyst. "
                 "Respond only with a valid JSON object. "
                 "Do not include any explanations, headings, or extra text."
+                "Specifically mention risks and downsides, do not be afraid to be negative"
             )
         },
         {
@@ -79,19 +80,17 @@ def get_recommendation(stock_data: StockData, model_bundle: tuple[AutoModelForCa
 
     return prompt_generative_ai_model(messages, model_bundle)
 
-def clean_model_response(response):
+def parse_model_response_into_dict(response: str) -> dict:
     try:
-        structured_response = json.loads(response)
-        return json.dumps(structured_response)
+        return json.loads(response)
     except json.JSONDecodeError:
         match = re.search(r'{.*}', response, re.DOTALL)
 
     if match:
-        structured_response = json.loads(match.group(0))
-        return json.dumps(structured_response, indent=2)
+        return json.loads(match.group(0))
     else:
         raise ValueError("No valid JSON found in model output")
 
 def write_llm_response_to_file(response: dict):
     with open("response.json", "w") as f:
-        f.write(clean_model_response(response))
+        f.write(parse_model_response_into_dict(response))
