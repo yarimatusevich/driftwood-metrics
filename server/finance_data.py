@@ -1,99 +1,138 @@
+from data_models import (
+    Article,
+    CompanyProfile,
+    StockSnapshot,
+    ValuationMetrics,
+    ProfitabilityMetrics,
+    BalanceSheetMetrics,
+    GrowthMetrics,
+    PerformanceMetrics,
+    IncomeMetrics,
+    FinancialMetrics,
+    HistoricalPrice,
+    MarketData,
+    SentimentData,
+)
+from sentiment import Finbert
 import yfinance
 from yfinance import Ticker
-from data_models import StockData, Article
-from sentiment_model import get_sentiment_model, get_article_list_sentiments
 
-def create_ticker_object(ticker: str) -> Ticker:
+def create_ticker_object(ticker_symbol: str) -> Ticker:
     try:
-        return yfinance.Ticker(ticker)
-    
+        return yfinance.Ticker(ticker_symbol)
     except Exception as e :
         print(f"Error retrieving ticker: {e}")
         return None
 
-def parse_ticker_data(ticker: Ticker) -> StockData:
-    model = get_sentiment_model()
-    articles = get_news_articles(ticker)
-    
-    return StockData(
-        valuation_metrics = get_valuation_metrics(ticker),
-        profitability_metrics = get_profitability_metrics(ticker),
-        balance_sheet_data = get_balance_sheet_data(ticker),
-        growth_metrics = get_growth_metrics(ticker),
-        stock_performance_metrics = get_stock_performance_metrics(ticker),
-        income_metrics = get_income_metrics(ticker),
-        analyst_sentiment = get_analyst_sentiment(ticker),
-        article_sentiments = get_article_list_sentiments(articles, model)
+def create_stock_snapshot(ticker_symbol: Ticker) -> StockSnapshot:
+    ticker = create_ticker_object(ticker_symbol)
+
+    return StockSnapshot(
+        profile=get_company_profile(ticker),
+        financials=get_financial_metrics(ticker),
+        market_data=get_market_data(ticker),
+        sentiment=get_sentiment_data(ticker)
     )
 
-def get_valuation_metrics(ticker: Ticker) -> dict:
-    return {
-        "trailingPE": ticker.info.get("trailingPE"),
-        "forwardPE": ticker.info.get("forwardPE")
-    }
+def get_company_profile(ticker: Ticker) -> CompanyProfile:
+    return CompanyProfile(
+        name=ticker.info.get("longName") or ticker.info.get("shortName"),
+        ticker=ticker.info.get("symbol"),
+        industry=ticker.info.get("industry"),
+        sector= ticker.info.get("sector"),
+        summary=ticker.info.get("longBusinessSummary")
+    )
 
-def get_profitability_metrics(ticker: Ticker) -> dict:
-    return {
-        "epsTrailingTwelveMonths": ticker.info.get("epsTrailingTwelveMonths"),
-        "totalRevenue": ticker.info.get("totalRevenue"),
-        "profitMargins": ticker.info.get("profitMargins"),
-        "returnOnEquity": ticker.info.get("returnOnEquity"),
-        "operatingMargins": ticker.info.get("operatingMargins")
-    }
+def get_financial_metrics(ticker: Ticker) -> FinancialMetrics:
+    return FinancialMetrics(
+        valuation=get_valuation_metrics(ticker),
+        profitability=get_profitabilty_metrics(ticker),
+        balance_sheet=get_balance_sheet_metrics(ticker),
+        growth=get_growth_metrics(ticker),
+        performance=get_performance_metrics(ticker),
+        income=get_income_metrics(ticker)
+    )
 
-def get_balance_sheet_data(ticker: Ticker) -> dict:
-    return {
-        "totalDebt": ticker.info.get("totalDebt"),
-        "totalCash": ticker.info.get("totalCash"),
-        "currentRatio": ticker.info.get("currentRatio"),
-        "debtToEquity": ticker.info.get("debtToEquity"),
-    }
+def get_valuation_metrics(ticker: Ticker) -> ValuationMetrics:
+    return ValuationMetrics(
+        trailing_pe=ticker.info.get("trailingPE"),
+        forward_pe=ticker.info.get("forwardPE"),
+        market_cap=ticker.info.get("marketCap")
+    )
 
-def get_growth_metrics(ticker: Ticker) -> dict:
-    return {
-        "revenueGrowth": ticker.info.get("revenueGrowth"),
-        "earningsQuarterlyGrowth": ticker.info.get("earningsQuarterlyGrowth"),
-    }
+def get_profitabilty_metrics(ticker: Ticker) -> ProfitabilityMetrics:
+    return ProfitabilityMetrics(
+        profit_margins=ticker.info.get("profitMargins"),
+        return_on_equity=ticker.info.get("returnOnEquity")
+    )
 
-def get_stock_performance_metrics(ticker: Ticker) -> dict:
-    return {
-        "fiftyTwoWeekLow": ticker.info.get("fiftyTwoWeekLow"),
-        "fiftyTwoWeekHigh": ticker.info.get("fiftyTwoWeekHigh"),
-        "beta": ticker.info.get("beta"),
-    }
+def get_balance_sheet_metrics(ticker: Ticker) -> BalanceSheetMetrics:
+    return BalanceSheetMetrics(
+        total_cash=ticker.info.get("totalCash"),
+        total_debt=ticker.info.get("totalDebt")
+    )
 
-def get_income_metrics(ticker: Ticker) -> dict:
-    return {
-        "dividendYield": ticker.info.get("dividendYield"),
-    }
+def get_growth_metrics(ticker: Ticker) -> GrowthMetrics:
+    return GrowthMetrics(
+        revenue_growth=ticker.info.get("revenueGrowth"),
+        earnings_growth=ticker.info.get("earningsGrowth")
+    )
 
-def get_analyst_sentiment(ticker: Ticker) -> dict:
-    return {
-        "targetMeanPrice": ticker.info.get("targetMeanPrice"),
-        "recommendations": ticker.recommendations.to_dict(orient = "records"),
-    }
+def get_performance_metrics(ticker: Ticker) -> PerformanceMetrics:
+    return PerformanceMetrics(
+        beta=ticker.info.get("beta"),
+        eps_trailing=ticker.info.get("trailingEps")
+    )
+
+def get_income_metrics(ticker: Ticker) -> IncomeMetrics:
+    return IncomeMetrics(
+        total_revenue = ticker.info.get("totalRevenue"),
+        net_income = ticker.info.get("netIncomeToCommon")
+    )
+
+def get_market_data(ticker: Ticker) -> MarketData:
+    return MarketData(
+        historical_prices=get_weekly_historical_prices(ticker)
+    )
+
+def get_weekly_historical_prices(ticker: Ticker) -> list[HistoricalPrice]:
+    hist = ticker.history(period='6mo', interval='1wk')
+
+    weekly_prices = []
+
+    for _, row in hist.iterrows():
+        hp = HistoricalPrice(
+            open=row['Open'],
+            high=row['High'],
+            low=row['Low'],
+            close=row['Close'],
+            volume=int(row['Volume'])
+        )
+        weekly_prices.append(hp)
+    
+    return weekly_prices
+
+def get_sentiment_data(ticker: Ticker) -> SentimentData:
+    return SentimentData(
+        analyst_summary=ticker.info.get("averageAnalystRating"),
+        news_sentiment=None,
+        raw_articles=get_news_articles(ticker)
+    )
 
 def get_news_articles(ticker: Ticker) -> list[Article]:
     data = ticker.news
-    parsed_data = []
+    articles = []
 
-    for i, article in enumerate(data):
-        try:
-            article_content = article.get("content")
-            title = article_content.get("title")
-            publishing_date = article_content.get("pubDate")
+    for article in data:
+        article_content = article.get("content")
+        title = article_content.get("title")
+        publishing_date = article_content.get("pubDate")
+        summary = article_content.get("summary")
 
-            # thumbnail_data = article_content.get("thumbnail")
-            # thumbnail = thumbnail_data.get("originalUrl") if isinstance(thumbnail_data, dict) else None
+        clickthrough = article_content.get("clickThroughUrl")
+        url = clickthrough.get("url") if isinstance(clickthrough, dict) else None
 
-            summary = article_content.get("summary")
-
-            clickthrough = article_content.get("clickThroughUrl")
-            url = clickthrough.get("url") if isinstance(clickthrough, dict) else None
-
-            new_article = Article(title, publishing_date, summary, url)
-            parsed_data.append(new_article)
-        except Exception as e:
-            print(f"Error parsing article at index {i}: {e}")
+        article = Article(title=title, publishing_date=publishing_date, summary=summary, url=url)
+        articles.append(article)
     
-    return parsed_data
+    return articles
