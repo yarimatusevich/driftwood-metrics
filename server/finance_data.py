@@ -13,7 +13,6 @@ from data_models import (
     MarketData,
     SentimentData,
 )
-from sentiment import Finbert
 import yfinance
 from yfinance import Ticker
 
@@ -115,8 +114,7 @@ def get_weekly_historical_prices(ticker: Ticker) -> list[HistoricalPrice]:
 def get_sentiment_data(ticker: Ticker) -> SentimentData:
     return SentimentData(
         analyst_summary=ticker.info.get("averageAnalystRating"),
-        news_sentiment=None,
-        raw_articles=get_news_articles(ticker)
+        articles=get_news_articles(ticker)
     )
 
 def get_news_articles(ticker: Ticker) -> list[Article]:
@@ -132,7 +130,7 @@ def get_news_articles(ticker: Ticker) -> list[Article]:
         clickthrough = article_content.get("clickThroughUrl")
         url = clickthrough.get("url") if isinstance(clickthrough, dict) else None
 
-        article = Article(title=title, publishing_date=publishing_date, summary=summary, url=url)
+        article = Article(title=title, date=publishing_date, summary=summary,sentiment=None, url=url)
         articles.append(article)
     
     return articles

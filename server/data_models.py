@@ -25,15 +25,16 @@ class IncomeMetrics(BaseModel):
     total_revenue: float | None
     net_income: float | None
 
-class Article(BaseModel):
-    title: str
-    publishing_date: str
-    summary: str
-    url: str | None
-
 class ArticleSentiment(BaseModel):
     label: str
     score: float
+
+class Article(BaseModel):
+    title: str
+    date: str
+    summary: str
+    sentiment: ArticleSentiment | None
+    url: str | None
 
 class HistoricalPrice(BaseModel):
     open: float
@@ -62,8 +63,7 @@ class MarketData(BaseModel):
 
 class SentimentData(BaseModel):
     analyst_summary: str | None
-    news_sentiment: list[ArticleSentiment] | None
-    raw_articles: list[Article] | None
+    articles: list[Article] | None
 
 class StockSnapshot(BaseModel):
     profile: CompanyProfile

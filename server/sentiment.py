@@ -6,8 +6,7 @@ class Finbert():
         self.model = pipeline(model="ProsusAI/finbert")
 
     def invoke(self, snapshot: StockSnapshot,) -> list[ArticleSentiment]:
-        sentiments = []
-        articles = snapshot.sentiment.raw_articles
+        articles = snapshot.sentiment.articles
 
         # Pre-processing the data
         input_texts = [
@@ -16,21 +15,12 @@ class Finbert():
 
         responses = self.model(input_texts)
 
-        # Extracting label and score for each article
-        sentiments = [
-            ArticleSentiment(label=r["label"], score=r["score"]) for r in responses
-        ]
-        
-        # Creating an updated copy of the input snapshot with updated article sentiment 
-        updated_snapshot = snapshot.model_copy(
-            update={
-                "sentiment": snapshot.sentiment.model_copy(
-                    update={"news_sentiment": sentiments}
-                )
-            }
-        )
+        # Updating articles
+        for article, response in zip(articles, responses):
+            article.sentiment = ArticleSentiment(label=response["label"], score=response["score"])
 
-        return updated_snapshot 
+        print(snapshot.sentiment.articles)
+        return snapshot 
         
     def get_sentiment(self, article: Article) -> ArticleSentiment:
         input_text = "  ".join(filter(None, [article.title, article.summary]))
