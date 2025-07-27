@@ -2,3 +2,4 @@
 .venv/
 output.json
 response.json
+faiss_index/
