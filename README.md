@@ -23,13 +23,17 @@ Flask
 LangChain
 Transformers
 
-## 🛠️ Installation
+## Plans for the future:
+- Improve LLM generation by refining prompt.
+- Redesign frontend UI
+
+## Installation
 **Folder structure:**  
 - `client/` – contains all frontend (Next.js) code  
 - `server/` – contains all backend (Flask + AI models) code
 ---
 
-### 🔧 Setup Steps
+### Setup Steps
 
 1. **Clone the repository**  
    ```bash
