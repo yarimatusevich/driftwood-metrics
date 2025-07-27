@@ -1,4 +1,9 @@
 Flask==3.1.1
 flask_cors==6.0.1
-transformers==4.53.0
-yfinance==0.2.64
+langchain==0.3.27
+langchain_community==0.3.27
+langchain_core==0.3.72
+pydantic==2.11.7
+sentence_transformers==5.0.0
+transformers==4.54.0
+yfinance==0.2.65
