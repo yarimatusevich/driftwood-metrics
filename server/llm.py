@@ -8,12 +8,16 @@ class Hermes2Pro():
     def __init__(self):
         self.model = Llama.from_pretrained(repo_id="NousResearch/Hermes-2-Pro-Mistral-7B-GGUF", filename="Hermes-2-Pro-Mistral-7B.Q2_K.gguf", n_ctx=8000, verbose=False)
 
-    def invoke(self, input: StockSnapshot) -> str:
-        prompt = f"Summarize this data in two sentences. In your summary describe if this company is a good invesment. Here is the data: {input.financials}, {input.sentiment}"
+    def invoke(self, input: tuple[str, StockSnapshot]) -> str:
+        # context is the data retrieved from the RAG system
+        context = input[0]
+        snap = input[1]
+
+        prompt = f"You are given data on the company, {snap.profile.name}. Analyze and summarize it in 2-3 sentences. Say whether you think this company is a good investment based on the data. DATA: {snap.sentiment}, {context}"
 
         response = self.model.create_completion(
             prompt=prompt,
-            max_tokens=1000
+            max_tokens=2000
         )
 
         return response["choices"][0]["text"]
