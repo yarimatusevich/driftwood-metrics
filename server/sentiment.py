@@ -1,11 +1,11 @@
-from transformers import pipeline
 from data_models import Article, ArticleSentiment, StockSnapshot
+from transformers import pipeline
 
 class Finbert():
     def __init__(self):
         self.model = pipeline(model="ProsusAI/finbert")
 
-    def invoke(self, snapshot: StockSnapshot,) -> list[ArticleSentiment]:
+    def invoke(self, snapshot: StockSnapshot,) -> StockSnapshot:
         articles = snapshot.sentiment.articles
 
         # Pre-processing the data
@@ -18,8 +18,7 @@ class Finbert():
         # Updating articles
         for article, response in zip(articles, responses):
             article.sentiment = ArticleSentiment(label=response["label"], score=response["score"])
-
-        print(snapshot.sentiment.articles)
+            
         return snapshot 
         
     def get_sentiment(self, article: Article) -> ArticleSentiment:
