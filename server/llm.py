@@ -12,19 +12,30 @@ class Hermes2Pro():
         # context is the data retrieved from the RAG system
         context = input[0]
         snap = input[1]
+ 
+        prompt = f"""
+        You are given data on the company: {snap.profile.name}.
+        Here is the top ten most recent article sentiments about the company: {snap.sentiment}
+        Here is a summary of historical sentiment: {context}
+        
+        Only respond with JSON formatted string with no explanations or any other dicussion in this format:
 
-        prompt = f"You are given data on the company, {snap.profile.name}. Analyze and summarize it in 2-3 sentences. Say whether you think this company is a good investment based on the data. DATA: {snap.sentiment}, {context}"
+        ```json
+        {{
+        "decision": "buy" | "sell" | "hold",
+        "reasoning": "one sentence summary of why, based on the data"
+        }}
+        """
 
         response = self.model.create_completion(
             prompt=prompt,
-            max_tokens=2000
+            max_tokens=300
         )
 
-        return response["choices"][0]["text"]
+        clean_response = parse_model_response_into_dict(response=response["choices"][0]["text"])
 
-"""
-TODO: Decide whether to remove or keep
-"""
+        return clean_response
+
 def parse_model_response_into_dict(response: str) -> dict:
     try:
         return json.loads(response)

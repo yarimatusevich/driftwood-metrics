@@ -1,8 +1,5 @@
-# from typing import Tuple, Optional
-
 from llm import Hermes2Pro
 from sentiment import Finbert
-# from data_models import StockSnapshot
 from finance_data import create_stock_snapshot
 from vectorstore import VectorstoreManager
 
@@ -10,7 +7,7 @@ from langchain_core.runnables import RunnableLambda, Runnable
 
 def create_chain() -> Runnable:
     create_snapshot = RunnableLambda(lambda ticker_sym: create_stock_snapshot(ticker_symbol=ticker_sym))
-
+ 
     finbert = Finbert()
     sentiment_model = RunnableLambda(lambda snapshot: finbert.invoke(snapshot=snapshot))
 

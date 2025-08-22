@@ -2,10 +2,9 @@ import os
 
 from data_models import StockSnapshot
 
-from sentence_transformers import SentenceTransformer
-
+from transformers import pipeline
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.schema import Document
 
 class VectorstoreManager():
@@ -14,6 +13,7 @@ class VectorstoreManager():
         self.vectorstore = None
         self.folder_path = "faiss_index"
         self._load_vectorstore
+        self.summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
     
     def _load_vectorstore(self):
         if os.path.exists(self.folder_path):
@@ -69,4 +69,6 @@ class VectorstoreManager():
         for doc in docs:
             context.append(doc.page_content)
         
-        return " ".join(context)
+        summary = self.summarizer(' '.join(context), max_length=150, min_length=40, do_sample=False)[0]["summary_text"]
+        
+        return summary
