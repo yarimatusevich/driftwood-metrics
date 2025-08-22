@@ -25,6 +25,7 @@ class Hermes2Pro():
         "decision": "buy" | "sell" | "hold",
         "reasoning": "one sentence summary of why, based on the data"
         }}
+        ```
         """
 
         response = self.model.create_completion(
@@ -32,17 +33,24 @@ class Hermes2Pro():
             max_tokens=300
         )
 
-        clean_response = parse_model_response_into_dict(response=response["choices"][0]["text"])
+        response_text = response["choices"][0]["text"]
+        response_text = response_text.replace("```json", "").replace("```", "").strip()
+
+        clean_response = parse_model_response_into_dict(response_text)
 
         return clean_response
 
 def parse_model_response_into_dict(response: str) -> dict:
+    print(response)
     try:
         return json.loads(response)
     except json.JSONDecodeError:
-        match = re.search(r'{.*}', response, re.DOTALL)
-
-    if match:
-        return json.loads(match.group(0))
-    else:
-        raise ValueError("No valid JSON found in model output")
+        # non-greedy match for first JSON object
+        match = re.search(r'{.*?}', response, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Found JSON-like text but it is invalid: {match.group(0)}") from e
+        else:
+            raise ValueError("No valid JSON found in model output")

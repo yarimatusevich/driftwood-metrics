@@ -5,7 +5,7 @@ from vectorstore import VectorstoreManager
 
 from langchain_core.runnables import RunnableLambda, Runnable
 
-def create_chain() -> Runnable:
+def create_pipeline() -> Runnable:
     create_snapshot = RunnableLambda(lambda ticker_sym: create_stock_snapshot(ticker_symbol=ticker_sym))
  
     finbert = Finbert()
@@ -20,15 +20,15 @@ def create_chain() -> Runnable:
 
     return create_snapshot | sentiment_model | update_vectorspace | retrieve_documents | llm
 
-chain = create_chain()
+# chain = create_pipeline()
 
-while True:
-    # Getting user input
-    user_in = input("Write a ticker: \n").upper()
+# while True:
+#     # Getting user input
+#     user_in = input("Write a ticker: \n").upper()
 
-    if user_in == "Q":
-        break
+#     if user_in == "Q":
+#         break
 
-    res = chain.invoke(user_in)
+#     res = chain.invoke(user_in)
 
-    print(res)
+#     print(res)
